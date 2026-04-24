@@ -94,9 +94,9 @@ export default function Header() {
                 className="flex items-center gap-2 hover:text-orange-500 transition-colors p-2"
               >
                 <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm">
-                  {user.name.charAt(0).toUpperCase()}
+                  {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
                 </div>
-                <span className="hidden sm:block text-sm font-medium max-w-24 truncate">{user.name}</span>
+                <span className="hidden sm:block text-sm font-medium max-w-24 truncate">{user?.name}</span>
               </button>
 
               {userMenuOpen && (

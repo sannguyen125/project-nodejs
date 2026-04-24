@@ -26,7 +26,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const result = await login(form.email, form.password);
-      if (result.success) navigate('/');
+      if (result.success) navigate(result.user.role === 'admin' ? '/admin' : '/');
     } catch (e) {
       setErrors({ general: e.message });
     } finally {
@@ -168,7 +168,7 @@ export default function LoginPage() {
                 </div>
               ))}
               {[
-                { field: 'password', label: 'Mật khẩu', placeholder: 'Ít nhất 6 ký tự' },
+                { field: 'password', label: 'Mật khẩu', placeholder: 'Ít nhất 8 ký tự' },
                 { field: 'confirmPassword', label: 'Xác nhận mật khẩu', placeholder: 'Nhập lại mật khẩu' },
               ].map(({ field, label, placeholder }) => (
                 <div key={field}>

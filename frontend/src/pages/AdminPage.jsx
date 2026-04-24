@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { BarChart2, Package, Users, ShoppingCart, TrendingUp, Plus, Edit, Trash2, Search, ChevronRight, BookOpen, DollarSign, RefreshCw } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { BarChart2, Users, ShoppingCart, TrendingUp, Plus, Edit, Trash2, Search, BookOpen, DollarSign, LogOut, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { categories as staticCategories } from '../data/books';
 import { formatPrice } from '../components/BookCard';
 import { api, normalizeBook, normalizeOrder, STATUS_TO_BACKEND } from '../services/api';
 
@@ -18,7 +17,8 @@ const STATUS_LABELS = {
 };
 
 export default function AdminPage() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [books, setBooks] = useState([]);
   const [orders, setOrders] = useState([]);
@@ -33,6 +33,8 @@ export default function AdminPage() {
   });
   const [formLoading, setFormLoading] = useState(false);
   const [formError, setFormError] = useState('');
+  const [thumbnailFile, setThumbnailFile] = useState(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState('');
 
   useEffect(() => {
     api.get('/category').then(res => setApiCategories(res.data || [])).catch(() => {});
@@ -56,13 +58,20 @@ export default function AdminPage() {
     }
   }, [activeTab]);
 
+  const handleAdminLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   if (!user || user.role !== 'admin') {
     return (
-      <div className="max-w-xl mx-auto px-4 py-20 text-center">
-        <div className="text-6xl mb-4">🔒</div>
-        <h2 className="text-xl font-bold text-gray-600 mb-2">Không có quyền truy cập</h2>
-        <p className="text-gray-400 mb-4">Trang này chỉ dành cho quản trị viên</p>
-        <Link to="/" className="btn-primary">Quay lại trang chủ</Link>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="max-w-sm w-full mx-4 text-center bg-white rounded-2xl shadow-lg p-8">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-xl font-bold text-gray-600 mb-2">Không có quyền truy cập</h2>
+          <p className="text-gray-400 mb-6">Trang này chỉ dành cho quản trị viên</p>
+          <Link to="/" className="btn-primary">Quay lại trang chủ</Link>
+        </div>
       </div>
     );
   }
@@ -76,6 +85,8 @@ export default function AdminPage() {
     setEditBook(null);
     setFormData({ name: '', author: '', price: '', originalPrice: '', category: apiCategories[0]?._id || '', quantity: '', description: '' });
     setFormError('');
+    setThumbnailFile(null);
+    setThumbnailPreview('');
     setShowBookForm(true);
   };
   const openEditForm = (book) => {
@@ -91,6 +102,8 @@ export default function AdminPage() {
       description: book.description,
     });
     setFormError('');
+    setThumbnailFile(null);
+    setThumbnailPreview(book.cover || '');
     setShowBookForm(true);
   };
 
@@ -109,27 +122,29 @@ export default function AdminPage() {
       setFormError('Vui lòng điền đầy đủ thông tin bắt buộc');
       return;
     }
+    if (!editBook && !thumbnailFile) {
+      setFormError('Vui lòng chọn ảnh bìa cho sách mới');
+      return;
+    }
     setFormLoading(true);
     setFormError('');
     try {
-      const payload = {
-        name: formData.name,
-        author: formData.author,
-        price: Number(formData.price),
-        originalPrice: Number(formData.originalPrice) || Number(formData.price),
-        category: formData.category,
-        quantity: Number(formData.quantity) || 0,
-        description: formData.description,
-      };
+      const fd = new FormData();
+      fd.append('name', formData.name);
+      fd.append('author', formData.author);
+      fd.append('price', Number(formData.price));
+      fd.append('originalPrice', Number(formData.originalPrice) || Number(formData.price));
+      if (formData.category) fd.append('category', formData.category);
+      fd.append('quantity', Number(formData.quantity) || 0);
+      fd.append('description', formData.description);
+      if (thumbnailFile) fd.append('thumbnail', thumbnailFile);
+
       if (editBook) {
-        const res = await api.put(`/book/${editBook.id}`, payload);
+        const res = await api.putForm(`/book/${editBook.id}`, fd);
         setBooks(b => b.map(book => book.id === editBook.id ? normalizeBook(res.data) : book));
       } else {
-        // Tạo mới cần thumbnail (bắt buộc theo model), gửi tên placeholder
-        // Nếu không upload file thì API sẽ báo lỗi – dùng multipart/form-data
-        setFormError('Tạo sách mới cần upload ảnh. Hãy dùng FormData hoặc thêm ảnh.');
-        setFormLoading(false);
-        return;
+        const res = await api.postForm('/book', fd);
+        setBooks(b => [normalizeBook(res.data), ...b]);
       }
       setShowBookForm(false);
     } catch (e) {
@@ -153,29 +168,47 @@ export default function AdminPage() {
     .reduce((sum, o) => sum + o.total, 0);
 
   const TABS = [
-    { id: 'dashboard', label: 'Tổng quan', icon: <BarChart2 size={18} /> },
+    { id: 'dashboard', label: 'Tổng quan', icon: <LayoutDashboard size={18} /> },
     { id: 'books', label: 'Quản lý sách', icon: <BookOpen size={18} /> },
     { id: 'orders', label: 'Đơn hàng', icon: <ShoppingCart size={18} /> },
     { id: 'customers', label: 'Khách hàng', icon: <Users size={18} /> },
   ];
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <nav className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link to="/" className="hover:text-orange-500">Trang chủ</Link>
-        <ChevronRight size={14} />
-        <span className="text-gray-700">Quản trị</span>
-      </nav>
+    <div className="min-h-screen bg-gray-100 flex flex-col">
+      {/* Admin Header */}
+      <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BookOpen className="text-orange-500" size={26} />
+            <span className="font-bold text-lg text-gray-800">BookStore</span>
+            <span className="text-gray-300 mx-2">|</span>
+            <span className="text-sm font-medium text-orange-500">Quản trị viên</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm">
+              {user?.name ? user.name.charAt(0).toUpperCase() : '?'}
+            </div>
+            <span className="text-sm font-medium text-gray-700 hidden sm:block">{user?.name}</span>
+            <button
+              onClick={handleAdminLogout}
+              className="flex items-center gap-1.5 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+            >
+              <LogOut size={15} /> Đăng xuất
+            </button>
+          </div>
+        </div>
+      </header>
 
-      <div className="flex gap-6">
+      <div className="flex flex-1 max-w-7xl mx-auto w-full px-4 py-6 gap-6">
         {/* Sidebar */}
-        <aside className="w-56 flex-shrink-0">
-          <div className="card overflow-hidden">
+        <aside className="w-52 flex-shrink-0">
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden">
             {TABS.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium transition-colors border-b border-gray-50 last:border-0 ${activeTab === tab.id ? 'bg-orange-50 text-orange-600' : 'text-gray-700 hover:bg-gray-50'}`}
+                className={`w-full flex items-center gap-3 px-4 py-3.5 text-sm font-medium transition-colors border-b border-gray-50 last:border-0 ${activeTab === tab.id ? 'bg-orange-50 text-orange-600' : 'text-gray-600 hover:bg-gray-50'}`}
               >
                 <span className={activeTab === tab.id ? 'text-orange-500' : 'text-gray-400'}>{tab.icon}</span>
                 {tab.label}
@@ -330,6 +363,28 @@ export default function AdminPage() {
                       <div className="bg-red-50 border border-red-200 text-red-600 rounded-lg px-4 py-2 text-sm mb-4">{formError}</div>
                     )}
                     <div className="space-y-3">
+                      {/* Ảnh bìa */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Ảnh bìa {!editBook && <span className="text-red-500">*</span>}
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={e => {
+                            const f = e.target.files[0];
+                            if (f) {
+                              setThumbnailFile(f);
+                              setThumbnailPreview(URL.createObjectURL(f));
+                            }
+                          }}
+                          className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100"
+                        />
+                        {thumbnailPreview && (
+                          <img src={thumbnailPreview} alt="preview" className="mt-2 h-24 object-cover rounded-lg border border-gray-200" />
+                        )}
+                      </div>
+
                       {[
                         { field: 'name', label: 'Tên sách *', placeholder: 'Nhập tên sách' },
                         { field: 'author', label: 'Tác giả *', placeholder: 'Nhập tên tác giả' },
@@ -355,6 +410,7 @@ export default function AdminPage() {
                           onChange={e => setFormData(f => ({ ...f, category: e.target.value }))}
                           className="input-field"
                         >
+                          <option value="">-- Chọn danh mục --</option>
                           {apiCategories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                         </select>
                       </div>

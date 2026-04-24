@@ -24,6 +24,14 @@ connectDB();
 
 app.use("/api", apiRouter);
 
+// JSON error handler — must be after all routes
+app.use((err, req, res, next) => {
+  console.error(err);
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || 'Lỗi server';
+  res.status(status).json({ success: false, message });
+});
+
 app.listen(port, () => {
-  console.log(`🚀 Server đang chạy tại port ${port}`);
+  console.log(`Server đang chạy tại port ${port}`);
 });

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
+import { useAuth } from './context/AuthContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
@@ -24,6 +25,14 @@ function Layout({ children }) {
   );
 }
 
+// Bảo vệ các route shop: admin không được vào, tự redirect về /admin
+function ShopRoute({ children }) {
+  const { user, loadingAuth } = useAuth();
+  if (loadingAuth) return null;
+  if (user?.role === 'admin') return <Navigate to="/admin" replace />;
+  return <Layout>{children}</Layout>;
+}
+
 export default function App() {
   return (
     <AuthProvider>
@@ -32,15 +41,15 @@ export default function App() {
           {/* Login không có header/footer */}
           <Route path="/login" element={<LoginPage />} />
 
-          {/* Các trang có layout chung */}
-          <Route path="/" element={<Layout><HomePage /></Layout>} />
-          <Route path="/shop" element={<Layout><ShopPage /></Layout>} />
-          <Route path="/book/:id" element={<Layout><BookDetailPage /></Layout>} />
-          <Route path="/cart" element={<Layout><CartPage /></Layout>} />
-          <Route path="/checkout" element={<Layout><CheckoutPage /></Layout>} />
-          <Route path="/profile" element={<Layout><ProfilePage /></Layout>} />
-          <Route path="/orders" element={<Layout><OrderHistoryPage /></Layout>} />
-          <Route path="/admin" element={<Layout><AdminPage /></Layout>} />
+          {/* Các trang shop — admin bị redirect về /admin */}
+          <Route path="/" element={<ShopRoute><HomePage /></ShopRoute>} />
+          <Route path="/shop" element={<ShopRoute><ShopPage /></ShopRoute>} />
+          <Route path="/book/:id" element={<ShopRoute><BookDetailPage /></ShopRoute>} />
+          <Route path="/cart" element={<ShopRoute><CartPage /></ShopRoute>} />
+          <Route path="/checkout" element={<ShopRoute><CheckoutPage /></ShopRoute>} />
+          <Route path="/profile" element={<ShopRoute><ProfilePage /></ShopRoute>} />
+          <Route path="/orders" element={<ShopRoute><OrderHistoryPage /></ShopRoute>} />
+          <Route path="/admin" element={<AdminPage />} />
 
           {/* 404 */}
           <Route path="*" element={

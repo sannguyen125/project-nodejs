@@ -50,7 +50,7 @@ export function CartProvider({ children }) {
     if (!user) { dispatch({ type: 'CLEAR_CART' }); return; }
     try {
       const res = await api.get('/cart');
-      const normalized = normalizeCartItems(res.data);
+      const normalized = normalizeCartItems(res.data?.data ?? res.data);
       dispatch({ type: 'SET_ITEMS', items: normalized });
     } catch {
       dispatch({ type: 'CLEAR_CART' });

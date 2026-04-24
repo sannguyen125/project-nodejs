@@ -18,11 +18,30 @@ async function request(method, url, data = null) {
   return json;
 }
 
+async function requestFormData(method, url, formData) {
+  const headers = {};
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}${url}`, { method, headers, body: formData });
+  const text = await res.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Server trả về lỗi không xác định (status ${res.status})`);
+  }
+  if (!res.ok) throw new Error(json.message || 'Lỗi server');
+  return json;
+}
+
 export const api = {
   get: (url) => request('GET', url),
   post: (url, data) => request('POST', url, data),
   put: (url, data) => request('PUT', url, data),
   delete: (url) => request('DELETE', url),
+  postForm: (url, formData) => requestFormData('POST', url, formData),
+  putForm: (url, formData) => requestFormData('PUT', url, formData),
 };
 
 // ─── Normalizers ──────────────────────────────────────────────────────────────
