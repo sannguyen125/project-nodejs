@@ -147,7 +147,7 @@ export default function ProfilePage() {
               )}
               <div className="space-y-4 max-w-md">
                 {[
-                  { key: 'newPw', label: 'Mật khẩu mới', placeholder: 'Ít nhất 6 ký tự' },
+                  { key: 'newPw', label: 'Mật khẩu mới', placeholder: 'Ít nhất 8 ký tự' },
                   { key: 'confirm', label: 'Xác nhận mật khẩu mới', placeholder: 'Nhập lại mật khẩu mới' },
                 ].map(f => (
                   <div key={f.key}>
@@ -164,7 +164,7 @@ export default function ProfilePage() {
                 <button
                   onClick={async () => {
                     setPwError('');
-                    if (pwForm.newPw.length < 6) { setPwError('Mật khẩu ít nhất 6 ký tự'); return; }
+                    if (pwForm.newPw.length < 8) { setPwError('Mật khẩu ít nhất 8 ký tự'); return; }
                     if (pwForm.newPw !== pwForm.confirm) { setPwError('Mật khẩu không khớp'); return; }
                     try {
                       await api.put(`/user/${user.id}`, { password: pwForm.newPw });

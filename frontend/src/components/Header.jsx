@@ -43,7 +43,7 @@ export default function Header() {
     <header className="bg-white shadow-md sticky top-0 z-50">
       {/* Top bar */}
       <div className="bg-orange-500 text-white text-sm py-1.5 px-4 text-center">
-        🚚 Miễn phí vận chuyển cho đơn hàng từ 150.000đ &nbsp;|&nbsp; Giao hàng toàn quốc
+        Hệ thống Online Bookstore
       </div>
 
       {/* Main header */}

@@ -12,5 +12,6 @@ router.put("/:id", verifyToken, verifyAdmin, bookController.updateBook);
 router.delete("/:id", verifyToken, verifyAdmin, bookController.deleteBook);
 router.patch("/:id/restore", verifyToken, verifyAdmin, bookController.restoreBook);
 router.post("/:id/review", verifyToken, bookController.addReview);
+router.delete("/:id/review/:reviewId", verifyToken, verifyAdmin, bookController.deleteReview);
 
 module.exports = router;

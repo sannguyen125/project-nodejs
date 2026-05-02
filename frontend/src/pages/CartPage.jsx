@@ -116,7 +116,7 @@ export default function CartPage() {
           ))}
 
           <Link to="/shop" className="flex items-center gap-2 text-sm text-orange-500 hover:text-orange-600 mt-4">
-             Tiế←p tục mua hàng
+             ←Tiếp tục mua hàng
           </Link>
         </div>
 
@@ -185,10 +185,6 @@ export default function CartPage() {
             >
               Thanh toán ngay →
             </button>
-            <div className="mt-3 flex items-center justify-center gap-4 text-xs text-gray-400">
-              <span>🔒 Thanh toán an toàn</span>
-              <span>✓ Đổi trả 7 ngày</span>
-            </div>
           </div>
         </div>
       </div>

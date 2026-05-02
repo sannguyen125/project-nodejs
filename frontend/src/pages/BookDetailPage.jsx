@@ -10,6 +10,7 @@ export default function BookDetailPage() {
   const navigate = useNavigate();
   const { addItem } = useCart();
   const [book, setBook] = useState(null);
+  const [review, setReview] = useState([]);
   const [related, setRelated] = useState([]);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
@@ -23,6 +24,7 @@ export default function BookDetailPage() {
         const res = await api.get(`/book/${id}`);
         const normalized = normalizeBook(res.data);
         setBook(normalized);
+        setReview(res.data.reviews || []);
 
         // Fetch sách liên quan cùng danh mục
         if (res.data.category?._id || res.data.category) {
@@ -238,6 +240,7 @@ export default function BookDetailPage() {
           {[
             { id: 'description', label: 'Mô tả sách' },
             { id: 'details', label: 'Thông tin chi tiết' },
+            { id: 'reviews', label: `Đánh giá (${review.length})` },
           ].map(t => (
             <button
               key={t.id}
@@ -277,6 +280,35 @@ export default function BookDetailPage() {
                 ))}
               </tbody>
             </table>
+          )}
+          {tab === 'reviews' && (
+            <div>
+              {review.length === 0 ? (
+                <p className="text-gray-400 text-center py-8">Chưa có đánh giá nào cho sách này.</p>
+              ) : (
+                <div className="space-y-5">
+                  {review.map((r, idx) => (
+                    <div key={idx} className="flex gap-4 border-b border-gray-100 pb-5 last:border-0 last:pb-0">
+                      <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm flex-shrink-0">
+                        {r.name?.charAt(0)?.toUpperCase() || '?'}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-gray-800">{r.name}</span>
+                          <span className="text-xs text-gray-400">
+                            {r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : ''}
+                          </span>
+                        </div>
+                        <StarRating rating={r.rating} size={14} />
+                        {r.comment && (
+                          <p className="text-gray-700 text-sm mt-2 leading-relaxed">{r.comment}</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>

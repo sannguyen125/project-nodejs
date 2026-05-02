@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BarChart2, Users, ShoppingCart, TrendingUp, Plus, Edit, Trash2, Search, BookOpen, DollarSign, LogOut, LayoutDashboard } from 'lucide-react';
+import { BarChart2, Users, ShoppingCart, TrendingUp, Plus, Edit, Trash2, Search, BookOpen, DollarSign, LogOut, LayoutDashboard, Star, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { formatPrice } from '../components/BookCard';
+import { formatPrice, StarRating } from '../components/BookCard';
 import { api, normalizeBook, normalizeOrder, STATUS_TO_BACKEND } from '../services/api';
 
 const STATUS_COLORS = {
@@ -39,15 +39,18 @@ export default function AdminPage() {
   const [formError, setFormError] = useState('');
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState('');
+  const [rawBooks, setRawBooks] = useState([]);
 
   useEffect(() => {
     api.get('/category').then(res => setApiCategories(res.data || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'books' || activeTab === 'dashboard') {
-      api.get('/book?limit=100').then(res => {
-        setBooks((res.data?.results || []).map(normalizeBook));
+    if (activeTab === 'books' || activeTab === 'dashboard' || activeTab === 'reviews') {
+      api.get('/book?limit=200').then(res => {
+        const raw = res.data?.results || [];
+        setRawBooks(raw);
+        setBooks(raw.map(normalizeBook));
       }).catch(() => {});
     }
     if (activeTab === 'orders' || activeTab === 'dashboard') {
@@ -167,6 +170,45 @@ export default function AdminPage() {
     }
   };
 
+  const handleDeleteReview = async (bookId, reviewId) => {
+    if (!window.confirm('Xác nhận xóa đánh giá này?')) return;
+    try {
+      await api.delete(`/book/${bookId}/review/${reviewId}`);
+      setRawBooks(prev => prev.map(b => {
+        if (b._id !== bookId) return b;
+        const newReviews = b.reviews.filter(r => r._id !== reviewId);
+        const newRating = newReviews.length > 0
+          ? newReviews.reduce((s, r) => s + r.rating, 0) / newReviews.length
+          : 0;
+        return { ...b, reviews: newReviews, numReviews: newReviews.length, rating: newRating };
+      }));
+    } catch (e) {
+      alert('Lỗi xóa đánh giá: ' + e.message);
+    }
+  };
+
+  // Tổng hợp tất cả reviews từ tất cả sách
+  const allReviews = rawBooks.flatMap(b =>
+    (b.reviews || []).map(r => ({
+      ...r,
+      bookId: b._id,
+      bookName: b.name,
+      bookCover: b.thumbnail,
+    }))
+  );
+
+  // Sách có rating cao nhất / thấp nhất (chỉ tính sách có ít nhất 1 review)
+  const booksWithReviews = rawBooks.filter(b => (b.reviews || []).length > 0);
+  const highestRatedBook = booksWithReviews.length > 0
+    ? booksWithReviews.reduce((a, b) => b.rating > a.rating ? b : a)
+    : null;
+  const lowestRatedBook = booksWithReviews.length > 0
+    ? booksWithReviews.filter(b => b.name != highestRatedBook.name).reduce((a, b) => b.rating < a.rating ? b : a)
+    : null;
+  const avgRatingAll = booksWithReviews.length > 0
+    ? booksWithReviews.reduce((s, b) => s + b.rating, 0) / booksWithReviews.length
+    : 0;
+
   const totalRevenue = orders
     .filter(o => o.status === 'completed')
     .reduce((sum, o) => sum + o.total, 0);
@@ -176,6 +218,7 @@ export default function AdminPage() {
     { id: 'books', label: 'Quản lý sách', icon: <BookOpen size={18} /> },
     { id: 'orders', label: 'Đơn hàng', icon: <ShoppingCart size={18} /> },
     { id: 'customers', label: 'Khách hàng', icon: <Users size={18} /> },
+    { id: 'reviews', label: 'Đánh giá', icon: <MessageSquare size={18} /> },
   ];
 
   return (
@@ -285,6 +328,75 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Rating summary */}
+              {booksWithReviews.length > 0 && (
+                <div className="card p-4 mt-6">
+                  <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <Star size={18} className="text-yellow-500" /> Tổng kết đánh giá
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {/* Highest rated */}
+                    <div className="bg-green-50 rounded-xl p-4">
+                      <div className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Đánh giá cao nhất</div>
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={highestRatedBook.thumbnail?.startsWith('http') ? highestRatedBook.thumbnail : `/images/book/${highestRatedBook.thumbnail}`}
+                          alt="" className="w-10 h-14 object-cover rounded shadow-sm"
+                          onError={e => { e.target.src = 'https://via.placeholder.com/40x56?text=📚'; }}
+                        />
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-gray-800 truncate">{highestRatedBook.name}</div>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Star size={13} className="text-yellow-500 fill-yellow-400" />
+                            <span className="text-sm font-bold text-yellow-600">{highestRatedBook.rating.toFixed(1)}</span>
+                            <span className="text-xs text-gray-400">({highestRatedBook.numReviews} đánh giá)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Lowest rated */}
+                    <div className="bg-red-50 rounded-xl p-4">
+                      <div className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-2">Đánh giá thấp nhất</div>
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={lowestRatedBook.thumbnail?.startsWith('http') ? lowestRatedBook.thumbnail : `/images/book/${lowestRatedBook.thumbnail}`}
+                          alt="" className="w-10 h-14 object-cover rounded shadow-sm"
+                          onError={e => { e.target.src = 'https://via.placeholder.com/40x56?text=📚'; }}
+                        />
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-gray-800 truncate">{lowestRatedBook.name}</div>
+                          <div className="flex items-center gap-1 mt-1">
+                            <Star size={13} className="text-yellow-500 fill-yellow-400" />
+                            <span className="text-sm font-bold text-yellow-600">{lowestRatedBook.rating.toFixed(1)}</span>
+                            <span className="text-xs text-gray-400">({lowestRatedBook.numReviews} đánh giá)</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Overall stats */}
+                    <div className="bg-yellow-50 rounded-xl p-4">
+                      <div className="text-xs font-semibold text-yellow-600 uppercase tracking-wide mb-2">Tổng quan</div>
+                      <div className="space-y-1.5">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Tổng đánh giá</span>
+                          <span className="font-bold text-gray-800">{allReviews.length}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Sách có đánh giá</span>
+                          <span className="font-bold text-gray-800">{booksWithReviews.length}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-gray-500">Rating trung bình</span>
+                          <span className="font-bold text-yellow-600">{avgRatingAll.toFixed(1)} / 5.0</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -568,6 +680,137 @@ export default function AdminPage() {
                       <tr>
                         <td colSpan={4} className="px-4 py-8 text-center text-gray-400">Chưa có khách hàng</td>
                       </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+          {/* Reviews management */}
+          {activeTab === 'reviews' && (
+            <div>
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Quản lý đánh giá ({allReviews.length})</h2>
+
+              {/* Summary cards */}
+              {booksWithReviews.length > 0 && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-green-50 rounded-xl p-4">
+                    <div className="text-xs font-semibold text-green-600 uppercase tracking-wide mb-2">Đánh giá cao nhất</div>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={highestRatedBook.thumbnail?.startsWith('http') ? highestRatedBook.thumbnail : `/images/book/${highestRatedBook.thumbnail}`}
+                        alt="" className="w-10 h-14 object-cover rounded shadow-sm"
+                        onError={e => { e.target.src = 'https://via.placeholder.com/40x56?text=📚'; }}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-gray-800 truncate">{highestRatedBook.name}</div>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Star size={13} className="text-yellow-500 fill-yellow-400" />
+                          <span className="text-sm font-bold text-yellow-600">{highestRatedBook.rating.toFixed(1)}</span>
+                          <span className="text-xs text-gray-400">({highestRatedBook.numReviews} đánh giá)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-red-50 rounded-xl p-4">
+                    <div className="text-xs font-semibold text-red-500 uppercase tracking-wide mb-2">Đánh giá thấp nhất</div>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={lowestRatedBook.thumbnail?.startsWith('http') ? lowestRatedBook.thumbnail : `/images/book/${lowestRatedBook.thumbnail}`}
+                        alt="" className="w-10 h-14 object-cover rounded shadow-sm"
+                        onError={e => { e.target.src = 'https://via.placeholder.com/40x56?text=📚'; }}
+                      />
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-gray-800 truncate">{lowestRatedBook.name}</div>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Star size={13} className="text-yellow-500 fill-yellow-400" />
+                          <span className="text-sm font-bold text-yellow-600">{lowestRatedBook.rating.toFixed(1)}</span>
+                          <span className="text-xs text-gray-400">({lowestRatedBook.numReviews} đánh giá)</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="bg-yellow-50 rounded-xl p-4">
+                    <div className="text-xs font-semibold text-yellow-600 uppercase tracking-wide mb-2">Tổng quan</div>
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Tổng đánh giá</span>
+                        <span className="font-bold text-gray-800">{allReviews.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Sách có đánh giá</span>
+                        <span className="font-bold text-gray-800">{booksWithReviews.length}</span>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-500">Rating trung bình</span>
+                        <span className="font-bold text-yellow-600">{avgRatingAll.toFixed(1)} / 5.0</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Reviews table */}
+              <div className="card overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {['Sách', 'Người đánh giá', 'Sao', 'Nội dung', 'Ngày', 'Hành động'].map(h => (
+                        <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {allReviews.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="px-4 py-8 text-center text-gray-400">Chưa có đánh giá nào</td>
+                      </tr>
+                    ) : (
+                      allReviews.map((r, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <img
+                                src={r.bookCover?.startsWith('http') ? r.bookCover : `/images/book/${r.bookCover}`}
+                                alt="" className="w-8 h-11 object-cover rounded shadow-sm flex-shrink-0"
+                                onError={e => { e.target.src = 'https://via.placeholder.com/32x44?text=📚'; }}
+                              />
+                              <span className="text-gray-700 font-medium max-w-32 truncate">{r.bookName}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-xs flex-shrink-0">
+                                {r.name?.charAt(0)?.toUpperCase() || '?'}
+                              </div>
+                              <span className="text-gray-700">{r.name}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-1">
+                              <Star size={13} className="text-yellow-500 fill-yellow-400" />
+                              <span className="font-semibold text-gray-800">{r.rating}</span>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 max-w-48">
+                            <span className="line-clamp-2">{r.comment || <span className="text-gray-300 italic">Không có nhận xét</span>}</span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-400 text-xs whitespace-nowrap">
+                            {r.createdAt ? new Date(r.createdAt).toLocaleDateString('vi-VN') : '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <button
+                              onClick={() => handleDeleteReview(r.bookId, r._id)}
+                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg"
+                              title="Xóa đánh giá"
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
                     )}
                   </tbody>
                 </table>

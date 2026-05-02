@@ -38,7 +38,7 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               {['Văn học', 'Khoa học', 'Kinh tế', 'Thiếu nhi', 'Lịch sử', 'Tâm lý học'].map(cat => (
                 <li key={cat}>
-                  <Link to={`/shop?search=${cat}`} className="hover:text-orange-400 transition-colors">{cat}</Link>
+                  <Link to={`/shop?categoryName=${encodeURIComponent(cat)}`} className="hover:text-orange-400 transition-colors">{cat}</Link>
                 </li>
               ))}
             </ul>
@@ -83,7 +83,7 @@ export default function Footer() {
       </div>
 
       <div className="border-t border-gray-800 py-4 text-center text-xs text-gray-500">
-        <p>© 2024 BookStore. Thiết kế bởi Nhóm 03 – CNPM. Tất cả quyền được bảo lưu.</p>
+        <p>© 2026 BookStore. Thiết kế bởi Nhóm 03 – CNPM. Tất cả quyền được bảo lưu.</p>
       </div>
     </footer>
   );

@@ -1,5 +1,6 @@
-const Book = require("../models/bookModel");
+const Book  = require("../models/bookModel");
 const Order = require("../models/orderModel");
+const User  = require("../models/userModel");
 
 const createBookService = async (data) => {
   const newBook = new Book(data);
@@ -78,6 +79,13 @@ const addReviewService = async (bookId, userId, userName, rating, comment) => {
   const book = await Book.findById(bookId);
   if (!book) throw new Error('Sách không tồn tại');
 
+  // Nếu userName không có trong token, query DB
+  if (!userName) {
+    const user = await User.findById(userId).select('name');
+    if (!user) throw new Error('Người dùng không tồn tại');
+    userName = user.name;
+  }
+
   // Chỉ cho review khi có đơn hàng Hoàn thành chứa sách này
   const completedOrder = await Order.findOne({
     user: userId,
@@ -97,6 +105,22 @@ const addReviewService = async (bookId, userId, userName, rating, comment) => {
   return book;
 };
 
+const deleteReviewService = async (bookId, reviewId) => {
+  const book = await Book.findById(bookId);
+  if (!book) throw new Error('Sách không tồn tại');
+
+  const idx = book.reviews.findIndex(r => r._id.toString() === reviewId);
+  if (idx === -1) throw new Error('Đánh giá không tồn tại');
+
+  book.reviews.splice(idx, 1);
+  book.numReviews = book.reviews.length;
+  book.rating = book.reviews.length > 0
+    ? book.reviews.reduce((sum, r) => sum + r.rating, 0) / book.reviews.length
+    : 0;
+  await book.save();
+  return book;
+};
+
 module.exports = {
   createBookService,
   getAllBooksService,
@@ -105,4 +129,5 @@ module.exports = {
   deleteBookService,
   restoreBookService,
   addReviewService,
+  deleteReviewService,
 };

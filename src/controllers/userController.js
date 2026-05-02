@@ -1,5 +1,6 @@
 const {getAllUsersService, getUserServiceById,putUserUpdateService,deleteUserService} = require('../services/userService')
 const {uploadSingleFile} = require('../services/fileService')
+const bcrypt = require('bcryptjs')
 const getAllUserController = async(req,res)=>{
     try{
         const Users = await getAllUsersService(req.query);
@@ -48,7 +49,7 @@ const getUserById = async(req,res)=>{
 const PutUpdateUser = async(req, res) =>{
     try {
         const id = req.params.id;
-        const {name, phone, address, role} = req.body;
+        const {name, phone, address, role, password} = req.body;
         if (!id) {
                 return res.status(400).json({ message: 'Thiếu User ID' });
             }
@@ -57,7 +58,11 @@ const PutUpdateUser = async(req, res) =>{
                 phone: phone,
                 address:address,
                 role: role
-        }; 
+        };
+        if (password) {
+            const salt = await bcrypt.genSalt(10);
+            userUpdate.password = await bcrypt.hash(password, salt);
+        }
         if (req.files && req.files.image) {
                 const fileImage = Array.isArray(req.files.image) ? req.files.image[0] : req.files.image;
                 let result = await uploadSingleFile(fileImage, 'user');

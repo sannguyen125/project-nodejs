@@ -178,6 +178,16 @@ const addReview = async (req, res, next) => {
   }
 };
 
+const deleteReview = async (req, res, next) => {
+  try {
+    const { id: bookId, reviewId } = req.params;
+    const result = await bookService.deleteReviewService(bookId, reviewId);
+    res.status(200).json({ success: true, message: 'Xóa đánh giá thành công', data: result });
+  } catch (err) {
+    next(err);
+  }
+};
+
 module.exports = {
   createBook,
   getAllBooks,
@@ -186,4 +196,5 @@ module.exports = {
   deleteBook,
   restoreBook,
   addReview,
+  deleteReview,
 };

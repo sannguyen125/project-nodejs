@@ -204,7 +204,7 @@ export default function CheckoutPage() {
               <div className="flex gap-3 mt-6">
                 <button onClick={() => setStep(1)} className="btn-secondary flex-1 py-3">← Quay lại</button>
                 <button onClick={handleSubmit} disabled={submitting} className="btn-primary flex-1 py-3 disabled:opacity-60">
-                  {submitting ? 'Đang đặt hàng...' : 'Đặt hàng ngay 🎉'}
+                  {submitting ? 'Đang đặt hàng...' : 'Đặt hàng ngay'}
                 </button>
               </div>
             </div>

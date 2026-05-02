@@ -15,14 +15,14 @@ const SORT_OPTIONS = [
 
 const PRICE_RANGES = [
   { label: 'Tất cả', min: '', max: '' },
-  { label: 'Dưới 50.000đ', min: '', max: 50000 },
+  { label: 'Dưới 50.000đ', min: '', max: 49999 },
   { label: '50.000 - 100.000đ', min: 50000, max: 100000 },
   { label: '100.000 - 200.000đ', min: 100000, max: 200000 },
   { label: 'Trên 200.000đ', min: 200000, max: '' },
 ];
 
 export default function ShopPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const searchQuery = searchParams.get('search') || '';
   const categoryNameParam = searchParams.get('categoryName') || '';
   const sortParam = searchParams.get('sort') || '-createdAt';
@@ -91,6 +91,7 @@ export default function ShopPage() {
   }, [searchParams]);
 
   const clearFilters = () => {
+    setSearchParams({});
     setSelectedCategoryName('');
     setPriceRange(0);
     setSort('-createdAt');

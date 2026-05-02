@@ -95,7 +95,7 @@ export default function HomePage() {
               { icon: <Truck className="text-orange-500" size={28} />, title: 'Miễn phí giao hàng', desc: 'Đơn từ 150.000đ' },
               { icon: <Shield className="text-orange-500" size={28} />, title: 'Hàng chính hãng', desc: '100% sách thật' },
               { icon: <RotateCcw className="text-orange-500" size={28} />, title: 'Đổi trả dễ dàng', desc: '7 ngày đổi trả' },
-              { icon: <Headphones className="text-orange-500" size={28} />, title: 'Hỗ trợ 24/7', desc: '1800 6789 miễn phí' },
+              { icon: <Headphones className="text-orange-500" size={28} />, title: 'Hỗ trợ 24/7', desc: '12345678 miễn phí' },
             ].map((f, i) => (
               <div key={i} className="flex items-center gap-3 bg-white rounded-xl p-4 shadow-sm">
                 {f.icon}

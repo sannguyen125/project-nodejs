@@ -42,7 +42,7 @@ export default function LoginPage() {
     if (!form.phone) errs.phone = 'Vui lòng nhập số điện thoại';
     else if (!/^0\d{9}$/.test(form.phone)) errs.phone = 'Số điện thoại không hợp lệ';
     if (!form.password) errs.password = 'Vui lòng nhập mật khẩu';
-    else if (form.password.length < 6) errs.password = 'Mật khẩu ít nhất 6 ký tự';
+    else if (form.password.length < 8) errs.password = 'Mật khẩu ít nhất 8 ký tự';
     if (form.password !== form.confirmPassword) errs.confirmPassword = 'Mật khẩu không khớp';
     if (Object.keys(errs).length) { setErrors(errs); return; }
 
@@ -119,7 +119,7 @@ export default function LoginPage() {
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
                     onChange={e => setField('password', e.target.value)}
-                    placeholder="••••••••"
+                    placeholder="********"
                     className={`input-field pr-10 ${errors.password ? 'border-red-400' : ''}`}
                     onKeyDown={e => e.key === 'Enter' && handleLogin()}
                   />
