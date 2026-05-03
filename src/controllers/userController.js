@@ -82,11 +82,11 @@ const PutUpdateUser = async(req, res) =>{
 
         return res.status(200).json({
             message: 'Cập nhật thành công',
-            data: updatedUser 
-        }); 
+            data: updatedUser
+        });
     }catch(error){
-        return res.status(500).json({
-            message: 'Lỗi Server' + error.message
+        return res.status(error.status || 500).json({
+            message: error.message
         });
     }
 }

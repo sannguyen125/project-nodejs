@@ -31,6 +31,14 @@ const getUserServiceById = async(userId) =>{
 }
 const putUserUpdateService = async(userId, dataUpdate) => {
     try{
+        if (dataUpdate.phone) {
+            const existing = await userModel.findOne({ phone: dataUpdate.phone, _id: { $ne: userId } });
+            if (existing) {
+                const err = new Error('Số điện thoại đã được sử dụng');
+                err.status = 400;
+                throw err;
+            }
+        }
         const user = await userModel.findByIdAndUpdate(userId, dataUpdate, { new: true });
         return user;
     }catch(error){

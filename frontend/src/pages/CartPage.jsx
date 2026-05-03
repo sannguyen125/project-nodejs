@@ -18,6 +18,7 @@ export default function CartPage() {
   const [voucherCode, setVoucherCode] = useState('');
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [voucherError, setVoucherError] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const SHIPPING = totalPrice >= 150000 ? 0 : 30000;
   const discount = appliedVoucher ? Math.round(totalPrice * (appliedVoucher.discount || 0)) : 0;
@@ -33,6 +34,32 @@ export default function CartPage() {
       setVoucherError('Mã voucher không hợp lệ');
       setAppliedVoucher(null);
     }
+  };
+
+  const isAllSelected = items.length > 0 && selectedIds.size === items.length;
+  const isIndeterminate = selectedIds.size > 0 && selectedIds.size < items.length;
+
+  const toggleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(items.map(i => i.id)));
+    }
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const deleteSelected = async () => {
+    for (const id of selectedIds) {
+      await removeItem(id);
+    }
+    setSelectedIds(new Set());
   };
 
   if (items.length === 0) {
@@ -60,62 +87,101 @@ export default function CartPage() {
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Cart items */}
         <div className="lg:col-span-2 space-y-3">
+          {/* Header bar */}
           <div className="flex items-center justify-between mb-2">
-            <h1 className="text-xl font-bold text-gray-800">Giỏ hàng của bạn</h1>
-            <button
-              onClick={clearCart}
-              className="text-sm text-red-500 hover:text-red-600 flex items-center gap-1"
-            >
-              <Trash2 size={14} /> Xóa tất cả
-            </button>
+            <div className="flex items-center gap-3">
+              {/* Checkbox chọn tất cả */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={isAllSelected}
+                  ref={el => { if (el) el.indeterminate = isIndeterminate; }}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 accent-orange-500 cursor-pointer"
+                />
+                <span className="text-sm text-gray-600 font-medium">
+                  {isAllSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                </span>
+              </label>
+              {selectedIds.size > 0 && (
+                <span className="text-xs text-gray-400">({selectedIds.size} đã chọn)</span>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {selectedIds.size > 0 && (
+                <button
+                  onClick={deleteSelected}
+                  className="flex items-center gap-1.5 text-sm text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Trash2 size={14} /> Xóa đã chọn ({selectedIds.size})
+                </button>
+              )}
+            </div>
           </div>
 
-          {items.map(item => (
-            <div key={item.id} className="card flex gap-4 p-4">
-              <Link to={`/book/${item.id}`} className="flex-shrink-0">
-                <img
-                  src={item.cover}
-                  alt={item.title}
-                  className="w-20 h-28 object-cover rounded-lg shadow-sm"
-                  onError={e => { e.target.src = 'https://via.placeholder.com/80x112?text=📚'; }}
-                />
-              </Link>
-              <div className="flex-1 min-w-0">
-                <Link to={`/book/${item.id}`}>
-                  <h3 className="font-semibold text-gray-800 hover:text-orange-500 line-clamp-2">{item.title}</h3>
+          {items.map(item => {
+            const isSelected = selectedIds.has(item.id);
+            return (
+              <div
+                key={item.id}
+                className={`card flex gap-4 p-4 transition-colors ${isSelected ? 'border border-orange-300 bg-orange-50/40' : ''}`}
+              >
+                {/* Checkbox */}
+                <div className="flex items-center flex-shrink-0">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(item.id)}
+                    className="w-4 h-4 accent-orange-500 cursor-pointer"
+                  />
+                </div>
+
+                <Link to={`/book/${item.id}`} className="flex-shrink-0">
+                  <img
+                    src={item.cover}
+                    alt={item.title}
+                    className="w-20 h-28 object-cover rounded-lg shadow-sm"
+                    onError={e => { e.target.src = 'https://via.placeholder.com/80x112?text=📚'; }}
+                  />
                 </Link>
-                <p className="text-sm text-gray-500 mt-0.5">{item.author}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{item.category}</p>
-                <div className="flex items-center justify-between mt-3">
-                  <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                <div className="flex-1 min-w-0">
+                  <Link to={`/book/${item.id}`}>
+                    <h3 className="font-semibold text-gray-800 hover:text-orange-500 line-clamp-2">{item.title}</h3>
+                  </Link>
+                  <p className="text-sm text-gray-500 mt-0.5">{item.author}</p>
+                  <p className="text-xs text-gray-400 mt-0.5">{item.category}</p>
+                  <div className="flex items-center justify-between mt-3">
+                    <div className="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        className="px-3 py-1.5 hover:bg-gray-100 transition-colors text-gray-600"
+                      >
+                        <Minus size={14} />
+                      </button>
+                      <span className="px-3 py-1.5 font-semibold text-sm min-w-8 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        className="px-3 py-1.5 hover:bg-gray-100 transition-colors text-gray-600"
+                      >
+                        <Plus size={14} />
+                      </button>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-orange-500">{formatPrice(item.price * item.quantity)}</div>
+                      {item.quantity > 1 && <div className="text-xs text-gray-400">{formatPrice(item.price)} × {item.quantity}</div>}
+                    </div>
                     <button
-                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                      className="px-3 py-1.5 hover:bg-gray-100 transition-colors text-gray-600"
+                      onClick={() => removeItem(item.id)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     >
-                      <Minus size={14} />
-                    </button>
-                    <span className="px-3 py-1.5 font-semibold text-sm min-w-8 text-center">{item.quantity}</span>
-                    <button
-                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                      className="px-3 py-1.5 hover:bg-gray-100 transition-colors text-gray-600"
-                    >
-                      <Plus size={14} />
+                      <Trash2 size={16} />
                     </button>
                   </div>
-                  <div className="text-right">
-                    <div className="font-bold text-orange-500">{formatPrice(item.price * item.quantity)}</div>
-                    {item.quantity > 1 && <div className="text-xs text-gray-400">{formatPrice(item.price)} × {item.quantity}</div>}
-                  </div>
-                  <button
-                    onClick={() => removeItem(item.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <Trash2 size={16} />
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           <Link to="/shop" className="flex items-center gap-2 text-sm text-orange-500 hover:text-orange-600 mt-4">
              ←Tiếp tục mua hàng

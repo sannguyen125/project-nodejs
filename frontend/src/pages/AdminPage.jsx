@@ -39,6 +39,8 @@ export default function AdminPage() {
   const [formError, setFormError] = useState('');
   const [thumbnailFile, setThumbnailFile] = useState(null);
   const [thumbnailPreview, setThumbnailPreview] = useState('');
+  const [sliderFiles, setSliderFiles] = useState([]);
+  const [sliderPreviews, setSliderPreviews] = useState([]);
   const [rawBooks, setRawBooks] = useState([]);
 
   useEffect(() => {
@@ -94,6 +96,8 @@ export default function AdminPage() {
     setFormError('');
     setThumbnailFile(null);
     setThumbnailPreview('');
+    setSliderFiles([]);
+    setSliderPreviews([]);
     setShowBookForm(true);
   };
   const openEditForm = (book) => {
@@ -111,6 +115,8 @@ export default function AdminPage() {
     setFormError('');
     setThumbnailFile(null);
     setThumbnailPreview(book.cover || '');
+    setSliderFiles([]);
+    setSliderPreviews(book.slider || []);
     setShowBookForm(true);
   };
 
@@ -145,6 +151,7 @@ export default function AdminPage() {
       fd.append('quantity', Number(formData.quantity) || 0);
       fd.append('description', formData.description);
       if (thumbnailFile) fd.append('thumbnail', thumbnailFile);
+      sliderFiles.forEach(f => fd.append('slider', f));
 
       if (editBook) {
         const res = await api.putForm(`/book/${editBook.id}`, fd);
@@ -518,6 +525,52 @@ export default function AdminPage() {
                         />
                         {thumbnailPreview && (
                           <img src={thumbnailPreview} alt="preview" className="mt-2 h-24 object-cover rounded-lg border border-gray-200" />
+                        )}
+                      </div>
+
+                      {/* Ảnh slider */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Ảnh slider <span className="text-gray-400 font-normal">(tùy chọn, chọn nhiều ảnh)</span>
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          onChange={e => {
+                            const files = Array.from(e.target.files);
+                            if (files.length > 0) {
+                              setSliderFiles(files);
+                              setSliderPreviews(files.map(f => URL.createObjectURL(f)));
+                            }
+                          }}
+                          className="block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-sm file:bg-orange-50 file:text-orange-600 hover:file:bg-orange-100"
+                        />
+                        {sliderPreviews.length > 0 && (
+                          <div className="mt-2 flex gap-2 flex-wrap">
+                            {sliderPreviews.map((src, i) => (
+                              <div key={i} className="relative group">
+                                <img
+                                  src={src}
+                                  alt={`slider-${i + 1}`}
+                                  className="h-20 w-14 object-cover rounded-lg border border-gray-200 shadow-sm"
+                                />
+                                <span className="absolute bottom-0 left-0 right-0 text-center text-xs bg-black/40 text-white rounded-b-lg py-0.5">
+                                  {i + 1}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {editBook && sliderFiles.length > 0 && (
+                          <p className="text-xs text-orange-500 mt-1">
+                            Ảnh mới sẽ thay thế toàn bộ slider cũ ({sliderFiles.length} ảnh)
+                          </p>
+                        )}
+                        {editBook && sliderFiles.length === 0 && sliderPreviews.length > 0 && (
+                          <p className="text-xs text-gray-400 mt-1">
+                            Slider hiện có {sliderPreviews.length} ảnh — không chọn file mới để giữ nguyên
+                          </p>
                         )}
                       </div>
 

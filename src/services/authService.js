@@ -7,6 +7,10 @@ const registerService = async (name, email, password, phone, address) => {
   if (existingUser) {
     return { success: false, status: 400, message: "Email này đã tồn tại" };
   }
+  const existingPhone = await User.findOne({ phone });
+  if (existingPhone) {
+    return { success: false, status: 400, message: "Số điện thoại đã được sử dụng" };
+  }
   const salt = await bcrypt.genSalt(10);
   const hashedPassword = await bcrypt.hash(password, salt);
   const newUser = new User({
